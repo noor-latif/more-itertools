@@ -2282,6 +2282,11 @@ class numeric_range(Sequence):
         >>> next(items)
         datetime.datetime(2019, 1, 2, 0, 0)
 
+    An empty ``numeric_range`` can be reversed without error:
+
+        >>> list(reversed(numeric_range(0)))
+        []
+
     """
 
     _EMPTY_HASH = hash(range(0, 0))
@@ -2402,6 +2407,8 @@ class numeric_range(Sequence):
         )
 
     def __reversed__(self):
+        if not self:
+            return iter(numeric_range(self._start, self._start, self._step))
         return iter(
             numeric_range(
                 self._get_by_index(-1), self._start - self._step, -self._step
