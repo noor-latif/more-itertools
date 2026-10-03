@@ -3090,6 +3090,26 @@ class seekable:
         >>> next(it)
         '6'
 
+    Setting *maxlen* to ``0`` disables the cache entirely, while peeking
+    and truth-testing still work without consuming an item:
+
+        >>> it = seekable([10, 20, 30], maxlen=0)
+        >>> it.peek()
+        10
+        >>> it.peek()
+        10
+        >>> list(it.elements())
+        []
+        >>> list(it)
+        [10, 20, 30]
+        >>> it = seekable([10, 20, 30], maxlen=0)
+        >>> bool(it)
+        True
+        >>> list(it)
+        [10, 20, 30]
+        >>> bool(seekable([], maxlen=0))
+        False
+
     """
 
     def __init__(self, iterable, maxlen=None):
@@ -3098,6 +3118,8 @@ class seekable:
             self._cache = []
         else:
             self._cache = deque([], maxlen)
+        self._maxlen = maxlen
+        self._peeked = _marker
         self._index = None
 
     def __iter__(self):
@@ -3113,6 +3135,11 @@ class seekable:
                 self._index += 1
                 return item
 
+        if self._peeked is not _marker:
+            item = self._peeked
+            self._peeked = _marker
+            return item
+
         item = next(self._source)
         self._cache.append(item)
         return item
@@ -3125,6 +3152,18 @@ class seekable:
         return True
 
     def peek(self, default=_marker):
+        if self._maxlen == 0:
+            # The cache cannot hold the peeked item, so keep it in a
+            # one-item slot that __next__ delivers before the source.
+            if self._peeked is not _marker:
+                return self._peeked
+            try:
+                self._peeked = next(self._source)
+            except StopIteration:
+                if default is _marker:
+                    raise
+                return default
+            return self._peeked
         try:
             peeked = next(self)
         except StopIteration:
