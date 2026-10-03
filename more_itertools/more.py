@@ -1151,6 +1151,19 @@ class bucket:
         >>> list(s['b'])
         ['b1', 'b2', 'b3']
 
+    Looking up a key that no item produces, either with ``in`` or by
+    selecting an empty bucket, does not add that key to the ones reported
+    by iteration:
+
+        >>> 'd' in s
+        False
+        >>> sorted(list(s))
+        ['a', 'b', 'c']
+        >>> list(s['d'])
+        []
+        >>> sorted(list(s))
+        ['a', 'b', 'c']
+
     The original iterable will be advanced and its items will be cached until
     they are used by the child iterables. This may require significant storage.
 
@@ -1205,8 +1218,11 @@ class bucket:
         """
         while True:
             # If we've cached some items that match the target value, emit
-            # the first one and evict it from the cache.
-            if self._cache[value]:
+            # the first one and evict it from the cache. Use .get() rather
+            # than indexing so that a lookup for a key with no cached items
+            # does not insert an empty entry that iteration would then
+            # report as a key.
+            if self._cache.get(value):
                 yield self._cache[value].popleft()
             # Otherwise we need to advance the parent iterator to search for
             # a matching item, caching the rest.
@@ -1218,6 +1234,10 @@ class bucket:
                         return
                     item_value = self._key(item)
                     if item_value == value:
+                        # Record the key so that it is reported by iteration
+                        # even if all of its items are consumed straight from
+                        # the source iterator and never cached.
+                        self._cache.setdefault(value, deque())
                         yield item
                         break
                     elif self._validator(item_value):
