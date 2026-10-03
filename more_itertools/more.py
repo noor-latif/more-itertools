@@ -1323,6 +1323,11 @@ def interleave_evenly(iterables, lengths=None):
     >>> list(interleave_evenly(iterables, lengths=lengths))
     [(0, 1), (0, 2), 'a', (0, 3), (1, 2), 'b', (1, 3), (2, 3), 'c']
 
+    With no iterables, the result is empty:
+
+    >>> list(interleave_evenly([]))
+    []
+
     Based on Bresenham's algorithm.
     """
     if lengths is None:
@@ -1337,6 +1342,8 @@ def interleave_evenly(iterables, lengths=None):
         raise ValueError('Mismatching number of iterables and lengths.')
 
     dims = len(lengths)
+    if dims == 0:
+        return
 
     # sort iterables by length, descending
     lengths_permute = sorted(
